@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>FCL System - Terminal Blindado</title>
+    <title>FCL System — Operação</title>
     
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -110,6 +110,20 @@
         .pdv-saldo-box { background: var(--bg-main); border: 2px dashed var(--border); border-radius: 12px; padding: 12px; text-align: center; margin-bottom: 14px; transition: all 0.3s; }
         .pdv-saldo-box.has-saldo { border-color: var(--success); background: rgba(16, 185, 129, 0.05); }
         .pdv-saldo-box.no-saldo { border-color: var(--warning); background: rgba(245, 158, 11, 0.05); }
+
+        /* Crédito SyKara no rodapé do app */
+        .sykara-credit {
+            text-align: center;
+            padding: 28px 16px 12px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        .sykara-credit a {
+            color: var(--accent);
+            font-weight: 700;
+            text-decoration: none;
+        }
+        .sykara-credit a:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -129,53 +143,6 @@
             <button onclick="logout()" style="background:none; border:none; color:var(--danger); font-size:20px; cursor:pointer; transition: transform 0.2s;"><i class="fas fa-power-off"></i></button>
         </div>
     </header>
-
-    <section id="login-screen" style="position:fixed; inset:0; background:var(--bg-main); display:flex; align-items:center; justify-content:center; z-index:2000; padding:16px;">
-        <div class="card-surface" style="width:100%; max-width:380px; text-align:center;">
-            <img src="https://i.postimg.cc/m2Tj2gYD/IMG-1255-removebg-preview.png" style="height:60px; margin-bottom:24px; object-fit: contain;">
-            
-            <div style="display:flex; background:var(--bg-main); padding:6px; border-radius:14px; margin-bottom:20px; border: 1px solid var(--border);">
-                <button class="btn-prime" style="background:var(--bg-card); color:var(--accent); flex:1; font-size:12px; padding:10px; box-shadow:0 2px 8px rgba(0,0,0,0.05);" onclick="setLoginMode('caixa')" id="btn-mode-caixa">Operação Balcão</button>
-                <button class="btn-prime" style="background:none; color:var(--text-muted); flex:1; font-size:12px; padding:10px; box-shadow:none;" onclick="setLoginMode('admin')" id="btn-mode-admin">Controladoria</button>
-            </div>
-
-            <div id="form-caixa">
-                <div class="form-group"><label>Escolha o Evento Ativo</label><select class="input-control" id="login-evento-id"><option>Buscando da nuvem...</option></select></div>
-                <div class="form-group"><label>Token / Senha de Entrada</label><input type="password" id="login-senha" class="input-control" placeholder="••••"></div>
-            </div>
-            <div id="form-admin" style="display:none;">
-                <div class="form-group"><label>Usuário Master</label><input type="text" id="admin-user" class="input-control" value="root"></div>
-                <div class="form-group"><label>Chave de Segurança</label><input type="password" id="admin-pass" class="input-control" value="fcl123"></div>
-            </div>
-            <button class="btn-prime" style="margin-top:16px;" onclick="realizarLogin()"><i class="fas fa-lock-open"></i> Autenticar no Terminal</button>
-        </div>
-        <!-- Assinatura SyKaraTech -->
-        <div class="sykara-signature">
-            <div class="sykara-line"></div>
-
-            <div class="sykara-content">
-                <a href="https://sykara-tech.github.io/home/" target="_blank" rel="noopener noreferrer"
-                   class="sykara-logo-link" aria-label="Visitar o site da SyKaraTech">
-                    <img src="logo-sykara.png" alt="SyKaraTech™" class="sykara-logo">
-                </a>
-
-                <div class="sykara-text">
-                    <span>Desenvolvido por <strong>SyKaraTech™</strong></span>
-                    <a href="https://sykara-tech.github.io/home/" target="_blank" rel="noopener noreferrer"
-                       class="sykara-site-btn">
-                        <span class="sykara-site-icon"><i class="fas fa-globe" aria-hidden="true"></i></span>
-                        <span>
-                            <small>Acesse nosso site</small>
-                            <b>SyKaraTech™</b>
-                        </span>
-                        <i class="fas fa-arrow-up-right-from-square sykara-arrow" aria-hidden="true"></i>
-                    </a>
-                </div>
-            </div>
-
-            <div class="sykara-line"></div>
-        </div>
-    </section>
 
     <main class="container" style="max-width:1300px; margin:24px auto; padding:0 16px; display:none;" id="main-app">
         
@@ -362,14 +329,18 @@
         let html5QrCode = null; let activeScannerContainerId = null; let graficoFaturamento = null;
 
         window.onload = () => {
-            if (localStorage.getItem('fcl_session_evento')) {
-                eventoAtivo = JSON.parse(localStorage.getItem('fcl_session_evento'));
-                if (localStorage.getItem('fcl_admin_enabled') === 'true') {
-                    document.getElementById('btn-nav-admin').style.display = 'flex';
-                    document.getElementById('btn-nav-dash').style.display = 'flex';
-                }
-                configurarTelaLogada();
+            if (!localStorage.getItem('fcl_session_evento')) {
+                window.location.replace('login.html');
+                return;
             }
+            eventoAtivo = JSON.parse(localStorage.getItem('fcl_session_evento'));
+            if (localStorage.getItem('fcl_admin_enabled') === 'true') {
+                const a = document.getElementById('btn-nav-admin');
+                const d = document.getElementById('btn-nav-dash');
+                if (a) a.style.display = 'flex';
+                if (d) d.style.display = 'flex';
+            }
+            configurarTelaLogada();
             sincronizarBancoOtimizado();
         };
 
@@ -425,52 +396,23 @@
         function setBadge(st) { document.getElementById('sync-badge').style.display = st ? 'flex' : 'none'; }
         function bloquearBotao(id, status) { document.getElementById(id).disabled = status; }
 
-        function setLoginMode(m) {
-            authMode = m;
-            document.getElementById('form-caixa').style.display = m === 'caixa' ? 'block' : 'none';
-            document.getElementById('form-admin').style.display = m === 'admin' ? 'block' : 'none';
-            
-            document.getElementById('btn-mode-caixa').style.background = m === 'caixa' ? 'var(--bg-card)' : 'none';
-            document.getElementById('btn-mode-caixa').style.boxShadow = m === 'caixa' ? '0 2px 8px rgba(0,0,0,0.05)' : 'none';
-            document.getElementById('btn-mode-caixa').style.color = m === 'caixa' ? 'var(--accent)' : 'var(--text-muted)';
-            
-            document.getElementById('btn-mode-admin').style.background = m === 'admin' ? 'var(--bg-card)' : 'none';
-            document.getElementById('btn-mode-admin').style.boxShadow = m === 'admin' ? '0 2px 8px rgba(0,0,0,0.05)' : 'none';
-            document.getElementById('btn-mode-admin').style.color = m === 'admin' ? 'var(--accent)' : 'var(--text-muted)';
-        }
 
-        function realizarLogin() {
-            if (authMode === 'caixa') {
-                const id = document.getElementById('login-evento-id').value;
-                const senha = document.getElementById('login-senha').value;
-                eventoAtivo = bd.eventos.find(e => e.id == id && e.senha == senha);
-                if (!eventoAtivo) return showToast("Senha ou Evento inválido.", "error");
-                localStorage.setItem('fcl_admin_enabled', 'false');
-            } else {
-                if (document.getElementById('admin-user').value === 'root' && document.getElementById('admin-pass').value === 'fcl123') {
-                    eventoAtivo = { id: 'admin', nome: "Controladoria Master" };
-                    document.getElementById('btn-nav-admin').style.display = 'flex';
-                    document.getElementById('btn-nav-dash').style.display = 'flex';
-                    localStorage.setItem('fcl_admin_enabled', 'true');
-                } else return showToast("Acesso Negado.", "error");
-            }
-            localStorage.setItem('fcl_session_evento', JSON.stringify(eventoAtivo));
-            configurarTelaLogada();
-        }
 
         function configurarTelaLogada() {
-            document.getElementById('login-screen').style.display = 'none';
             document.getElementById('app-header').style.display = 'flex';
             document.getElementById('main-app').style.display = 'block';
-            document.getElementById('app-nav').style.display = 'flex';
+            const nav = document.getElementById('app-nav');
+            if (nav) nav.style.display = 'flex';
             document.getElementById('header-nome-evento').innerText = eventoAtivo.nome;
             renderBarracasFiltro();
             renderPDV();
         }
 
         function logout() {
-            eventoAtivo = null; localStorage.clear();
-            location.reload();
+            eventoAtivo = null;
+            localStorage.removeItem('fcl_session_evento');
+            localStorage.removeItem('fcl_admin_enabled');
+            window.location.replace('login.html');
         }
 
         function mudarAba(aba, btn) {
