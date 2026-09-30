@@ -184,20 +184,12 @@
             gap: 2px;
             text-decoration: none;
         }
-        .sykara-logo-svg {
-            width: 72px;
-            height: 56px;
-        }
-        .sykara-by {
-            font-size: 11px;
-            font-weight: 600;
-            color: rgba(255,255,255,0.55);
-            letter-spacing: 0.3px;
-        }
-        .sykara-by strong {
-            color: var(--sykara-green);
-            font-weight: 800;
-            letter-spacing: 0.5px;
+        .sykara-logo-img {
+            height: 72px;
+            width: auto;
+            max-width: 160px;
+            object-fit: contain;
+            display: block;
         }
         .sykara-right {
             display: flex;
@@ -323,12 +315,7 @@
     <footer class="sykara-footer">
         <div class="sykara-footer-inner">
             <a class="sykara-brand" href="https://sykara-tech.github.io/home/" target="_blank" rel="noopener noreferrer" aria-label="SyKaraTech">
-                <!-- Logo abstrato verde (aproximação do logotipo oficial) -->
-                <svg class="sykara-logo-svg" viewBox="0 0 120 90" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <path d="M60 8 C72 22 88 18 95 32 C102 46 90 58 78 62 C90 66 98 78 88 88 C78 96 62 82 60 70 C58 82 42 96 32 88 C22 78 30 66 42 62 C30 58 18 46 25 32 C32 18 48 22 60 8 Z" stroke="#39e07a" stroke-width="3.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M60 22 C68 32 78 30 82 40 C86 50 76 56 68 58 C76 60 82 68 76 74 C70 80 62 70 60 62 C58 70 50 80 44 74 C38 68 44 60 52 58 C44 56 34 50 38 40 C42 30 52 32 60 22 Z" stroke="#39e07a" stroke-width="2.4" fill="none" opacity="0.85"/>
-                </svg>
-                <span class="sykara-by">by <strong>SyKaraTECH™</strong></span>
+                <img class="sykara-logo-img" src="logo-sykara.png" alt="SyKaraTech™">
             </a>
 
             <div class="sykara-right">
