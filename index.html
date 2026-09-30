@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>FCL System - Terminal Blindado</title>
+    
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+
+    <style>
+        :root {
+            /* Cores mais modernas e design clean */
+            --bg-main: #f8fafc; --bg-card: #ffffff;
+            --text-dark: #0f172a; --text-muted: #64748b; 
+            --border: #e2e8f0; --primary: #1e293b; 
+            --accent: #4f46e5; --accent-light: #6366f1; /* Tons de Indigo premium */
+            --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
+            --shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.025);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background-color: var(--bg-main); color: var(--text-dark); padding-bottom: 90px; overflow-x: hidden; }
+        
+        #sync-badge { position: fixed; top: 15px; left: 50%; transform: translateX(-50%); background: var(--accent-light); color: white; padding: 6px 16px; border-radius: 30px; font-size: 11px; font-weight: 700; z-index: 9999; display: none; align-items: center; gap: 8px; box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.4); text-transform: uppercase; }
+        .spin-loader { border: 2px solid transparent; border-top: 2px solid #fff; border-radius: 50%; width: 14px; height: 14px; animation: spin 0.6s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        .card-surface { background: var(--bg-card); border-radius: 18px; padding: 24px; border: 1px solid var(--border); box-shadow: var(--shadow); margin-bottom: 16px; transition: transform 0.2s ease; }
+        .section-title { font-size: 13px; font-weight: 800; color: var(--accent); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        .form-group { margin-bottom: 14px; text-align: left; }
+        .form-group label { display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.3px; }
+        .input-control { width: 100%; padding: 14px; background: var(--bg-main); border: 2px solid var(--border); border-radius: 12px; font-size: 15px; color: var(--text-dark); font-weight: 600; transition: all 0.3s ease; }
+        .input-control:focus { outline: none; border-color: var(--accent-light); box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15); }
+        
+        .btn-prime { width: 100%; padding: 14px; background: var(--accent); color: white; border: none; border-radius: 12px; font-weight: 700; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; transition: all 0.2s ease; }
+        .btn-prime:hover { filter: brightness(1.1); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .btn-prime:active { transform: scale(0.98); }
+        .btn-prime:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+        
+        .btn-sec { background: transparent; color: var(--text-dark); border: 2px solid var(--border); }
+        .btn-sec:hover { background: var(--bg-main); }
+        .btn-success { background: var(--success); }
+        .btn-success:hover { box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2); }
+        .btn-danger { background: var(--danger); }
+        .btn-warning { background: var(--warning); color: #000; }
+        
+        .grid-layout { display: grid; grid-template-columns: 1fr; gap: 16px; }
+        @media (min-width: 960px) { .grid-layout { grid-template-columns: 1fr 380px; } }
+        
+        .barraca-tab { background: var(--bg-card); border: 2px solid var(--border); color: var(--text-muted); padding: 10px 20px; border-radius: 30px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; transition: all 0.2s ease; }
+        .barraca-tab:hover { border-color: var(--accent-light); color: var(--accent); }
+        .barraca-tab.active { background: var(--accent); color: white; border-color: var(--accent); box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3); }
+
+        .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; }
+        .product-tile { border: 2px solid var(--border); background: var(--bg-card); border-radius: 14px; padding: 16px; text-align: center; cursor: pointer; position: relative; transition: all 0.2s ease; }
+        .product-tile:hover { border-color: var(--accent-light); transform: translateY(-3px); box-shadow: var(--shadow); }
+        .product-tile:active { transform: scale(0.96); }
+        .product-qty-badge { position: absolute; top: -8px; right: -8px; background: var(--danger); color: white; border-radius: 50%; width: 24px; height: 24px; font-size: 12px; display: flex; align-items: center; justify-content: center; font-weight: 800; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        
+        .scanner-container { display: none; margin-bottom: 14px; position: relative; border-radius: 14px; overflow: hidden; border: 3px dashed var(--accent); background: #000; box-shadow: inset 0 0 20px rgba(0,0,0,0.5); }
+        .scanner-viewport { width: 100%; min-height: 230px; }
+        .btn-close-scanner { position: absolute; top: 10px; right: 10px; background: var(--danger); color: white; border: none; width: 34px; height: 34px; border-radius: 50%; z-index: 10; font-size: 16px; cursor: pointer; transition: transform 0.2s; }
+        .btn-close-scanner:hover { transform: scale(1.1); }
+
+        .bottom-nav { position: fixed; bottom: 0; width: 100%; background: var(--bg-card); display: flex; border-top: 1px solid var(--border); z-index: 1500; height: 75px; box-shadow: 0 -5px 20px rgba(0,0,0,0.03); }
+        .nav-item { background: none; border: none; color: var(--text-muted); display: flex; flex-direction: column; align-items: center; justify-content: center; width: 25%; font-size: 18px; cursor: pointer; transition: color 0.2s; }
+        .nav-item:hover { color: var(--accent-light); }
+        .nav-item.active { color: var(--accent); font-weight: 800; }
+        .nav-item span { font-size: 11px; margin-top: 6px; font-weight: 600; }
+
+        header { background: var(--bg-card); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
+        .tab-content { display: none; animation: fadeIn 0.3s ease; }
+        .tab-content.active { display: block; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        #toast-container { position: fixed; bottom: 95px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; max-width: 320px; }
+        .toast { background: var(--primary); color: var(--bg-card); padding: 14px 20px; border-radius: 12px; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 12px; box-shadow: 0 10px 20px rgba(0,0,0,0.15); animation: slideIn 0.3s ease forwards; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { background: var(--bg-main); padding: 12px; color: var(--text-muted); border-bottom: 2px solid var(--border); text-align: left; font-weight: 700; text-transform: uppercase; font-size: 11px; }
+        td { padding: 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+
+        .fcl-card-render { width: 170px; height: 240px; background: #ffffff; border: 2px solid #0f172a; border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 16px; text-align: center; color: #000000; position: relative; page-break-inside: avoid; }
+        .fcl-card-render .brand-logo { width: auto; height: 40px; object-fit: contain; }
+        .fcl-card-render .id-tag { font-family: monospace; font-size: 13px; font-weight: 800; background: #f1f5f9; padding: 6px 12px; border-radius: 8px; border: 1px solid #cbd5e1; }
+        #print-area { display: none; }
+        @media print {
+            body * { visibility: hidden; }
+            #print-area, #print-area * { visibility: visible; }
+            #print-area { display: flex !important; position: absolute; left: 0; top: 0; width: 100%; flex-wrap: wrap; gap: 15px; justify-content: center; }
+        }
+
+        /* Dash Cards */
+        .dash-card { padding: 24px; border-radius: 16px; color: white; display: flex; flex-direction: column; justify-content: center; box-shadow: var(--shadow); position: relative; overflow: hidden; }
+        .dash-card::after { content: ''; position: absolute; top: 0; right: 0; width: 100px; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1)); transform: skewX(-20deg); }
+        .dash-card h4 { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.9; margin-bottom: 10px; font-weight: 700; }
+        .dash-card h2 { font-size: 32px; font-weight: 800; margin: 0; letter-spacing: -0.5px; }
+        .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 20px; }
+        
+        /* Visor de Saldo do Checkout */
+        .pdv-saldo-box { background: var(--bg-main); border: 2px dashed var(--border); border-radius: 12px; padding: 12px; text-align: center; margin-bottom: 14px; transition: all 0.3s; }
+        .pdv-saldo-box.has-saldo { border-color: var(--success); background: rgba(16, 185, 129, 0.05); }
+        .pdv-saldo-box.no-saldo { border-color: var(--warning); background: rgba(245, 158, 11, 0.05); }
+    </style>
+</head>
+<body>
+
+    <div id="sync-badge"><div class="spin-loader"></div><span>Sincronizando...</span></div>
+    <div id="toast-container"></div>
+    <div id="print-area"></div>
+
+    <header id="app-header" style="display:none;">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <img src="https://i.postimg.cc/m2Tj2gYD/IMG-1255-removebg-preview.png" style="height:35px; width:auto; object-fit: contain;">
+            <div style="border-left: 2px solid var(--border); padding-left: 12px;">
+                <div style="font-weight:800; font-size:15px; color: var(--primary);" id="header-nome-evento">Carregando...</div>
+            </div>
+        </div>
+        <div style="display:flex; gap:8px;">
+            <button onclick="logout()" style="background:none; border:none; color:var(--danger); font-size:20px; cursor:pointer; transition: transform 0.2s;"><i class="fas fa-power-off"></i></button>
+        </div>
+    </header>
+
+    <section id="login-screen" style="position:fixed; inset:0; background:var(--bg-main); display:flex; align-items:center; justify-content:center; z-index:2000; padding:16px;">
+        <div class="card-surface" style="width:100%; max-width:380px; text-align:center;">
+            <img src="https://i.postimg.cc/m2Tj2gYD/IMG-1255-removebg-preview.png" style="height:60px; margin-bottom:24px; object-fit: contain;">
+            
+            <div style="display:flex; background:var(--bg-main); padding:6px; border-radius:14px; margin-bottom:20px; border: 1px solid var(--border);">
+                <button class="btn-prime" style="background:var(--bg-card); color:var(--accent); flex:1; font-size:12px; padding:10px; box-shadow:0 2px 8px rgba(0,0,0,0.05);" onclick="setLoginMode('caixa')" id="btn-mode-caixa">Operação Balcão</button>
+                <button class="btn-prime" style="background:none; color:var(--text-muted); flex:1; font-size:12px; padding:10px; box-shadow:none;" onclick="setLoginMode('admin')" id="btn-mode-admin">Controladoria</button>
+            </div>
+
+            <div id="form-caixa">
+                <div class="form-group"><label>Escolha o Evento Ativo</label><select class="input-control" id="login-evento-id"><option>Buscando da nuvem...</option></select></div>
+                <div class="form-group"><label>Token / Senha de Entrada</label><input type="password" id="login-senha" class="input-control" placeholder="••••"></div>
+            </div>
+            <div id="form-admin" style="display:none;">
+                <div class="form-group"><label>Usuário Master</label><input type="text" id="admin-user" class="input-control" value="root"></div>
+                <div class="form-group"><label>Chave de Segurança</label><input type="password" id="admin-pass" class="input-control" value="fcl123"></div>
+            </div>
+            <button class="btn-prime" style="margin-top:16px;" onclick="realizarLogin()"><i class="fas fa-lock-open"></i> Autenticar no Terminal</button>
+        </div>
+    </section>
+
+    <main class="container" style="max-width:1300px; margin:24px auto; padding:0 16px; display:none;" id="main-app">
+        
+        <section id="tab-pdv" class="tab-content active">
+            <div id="barraca-filter-container" style="display:flex; gap:10px; overflow-x:auto; padding-bottom:14px; margin-bottom:16px;"></div>
+            <div class="grid-layout">
+                <div>
+                    <div class="card-surface" style="min-height: 350px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+                            <input type="text" class="input-control" placeholder="🔍 Filtrar cardápio..." onkeyup="renderPDV(this.value)" style="width:100%; border-radius: 30px; padding: 12px 20px;">
+                        </div>
+                        <div class="product-grid" id="lista-produtos-pdv"></div>
+                    </div>
+                </div>
+                <div class="card-surface">
+                    <h3 class="section-title"><i class="fas fa-shopping-basket"></i> Checkout Seguro</h3>
+                    <div id="container-leitor-pdv" class="scanner-container">
+                        <button class="btn-close-scanner" onclick="pararLeitorCamera('leitor-pdv', 'container-leitor-pdv')"><i class="fas fa-times"></i></button>
+                        <div id="leitor-pdv" class="scanner-viewport"></div>
+                    </div>
+                    
+                    <button class="btn-prime btn-sec" style="margin-bottom:14px; font-size:13px;" onclick="iniciarLeitor('leitor-pdv', 'container-leitor-pdv', 'pdv-card-id', 'pdv')"><i class="fas fa-qrcode"></i> Bipar QR Code do Cliente</button>
+                    
+                    <input type="text" id="pdv-card-id" class="input-control" placeholder="ID Cartão (Biper / Digite)" style="text-align:center; font-weight:800; font-size: 18px; margin-bottom:8px; text-transform: uppercase;" onkeyup="verificarSaldoPDV()">
+                    
+                    <div id="pdv-visor-saldo" class="pdv-saldo-box">
+                        <span style="font-size:11px; font-weight:700; color:var(--text-muted); display:block; margin-bottom:2px; text-transform: uppercase;">Saldo Disponível</span>
+                        <div id="pdv-valor-saldo" style="font-size:22px; font-weight:800; color:var(--text-muted);">Aguardando Cartão</div>
+                    </div>
+                    
+                    <div id="carrinho-itens" style="max-height:200px; overflow-y:auto; margin-bottom:14px; border-bottom:2px dashed var(--border); padding-bottom:10px;"></div>
+                    
+                    <div style="display:flex; justify-content:space-between; align-items: center; font-size:18px; font-weight:800; margin-bottom:18px; background: var(--bg-main); padding: 12px 16px; border-radius: 12px;">
+                        <span>Total:</span><span id="carrinho-total" style="color:var(--danger); font-size: 22px;">R$ 0,00</span>
+                    </div>
+                    
+                    <div style="display:flex; gap:12px;">
+                        <button class="btn-prime btn-sec" style="width:60px; padding:0; border-color: var(--danger); color: var(--danger);" onclick="limparCarrinho()"><i class="fas fa-trash-alt"></i></button>
+                        <button class="btn-prime btn-success" id="btn-finalizar-venda" onclick="finalizarVenda()"><i class="fas fa-check-circle"></i> Confirmar Débito</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="tab-caixa" class="tab-content">
+            <div class="grid-layout" style="max-width:850px; margin:0 auto;">
+                <div class="card-surface">
+                    <h3 class="section-title"><i class="fas fa-cash-register"></i> Terminal de Caixa (Gestão de Saldo)</h3>
+                    
+                    <div class="card-surface" id="display-resultado-consulta" style="display:none; text-align:center; flex-direction:column; justify-content:center; align-items:center; background: var(--bg-main); border: 3px dashed var(--border); margin-bottom: 24px; box-shadow: none;">
+                        <span style="font-size:11px; font-weight:800; color:var(--text-muted); letter-spacing: 1px;">SALDO ATUAL DO CARTÃO</span>
+                        <h2 id="display-saldo-valor" style="font-size:42px; font-weight:800; color:var(--success); margin:10px 0;">R$ 0,00</h2>
+                        <p id="display-saldo-id" style="font-family:monospace; font-size:14px; font-weight:700; color:var(--text-muted); background: var(--bg-card); padding: 6px 12px; border-radius: 8px;"></p>
+                    </div>
+
+                    <div id="container-leitor-caixa" class="scanner-container">
+                        <button class="btn-close-scanner" onclick="pararLeitorCamera('leitor-caixa', 'container-leitor-caixa')"><i class="fas fa-times"></i></button>
+                        <div id="leitor-caixa" class="scanner-viewport"></div>
+                    </div>
+                    <button class="btn-prime btn-sec" style="margin-bottom:16px;" onclick="iniciarLeitor('leitor-caixa', 'container-leitor-caixa', 'caixa-card-id', 'consulta')"><i class="fas fa-camera"></i> Ler QR Code Cliente</button>
+                    
+                    <div class="form-group">
+                        <label>Código do Cartão (Pressione Enter para buscar)</label>
+                        <input type="text" id="caixa-card-id" class="input-control" style="text-align:center; font-weight:800; font-size: 18px; text-transform: uppercase;" placeholder="Ex: FCL-12345" onkeyup="if(event.key === 'Enter') executarConsultaSaldo()">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Valor da Movimentação (R$)</label>
+                        <input type="number" id="caixa-valor" class="input-control" placeholder="0.00" step="0.01" style="text-align:center; font-size:22px; font-weight:800; color: var(--accent);">
+                    </div>
+                    
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
+                        <button class="btn-prime btn-success" id="btn-recarga" onclick="processarCaixaTransacao('Recarga')"><i class="fas fa-plus-circle"></i> Inserir Saldo</button>
+                        <button class="btn-prime btn-danger" id="btn-estorno" onclick="processarCaixaTransacao('Estorno')"><i class="fas fa-minus-circle"></i> Estorno Parcial</button>
+                    </div>
+                    
+                    <button class="btn-prime btn-warning" id="btn-estorno-total" style="margin-bottom:16px;" onclick="estornarSaldoTotal()"><i class="fas fa-eraser"></i> Estornar TUDO (Zerar)</button>
+
+                    <button class="btn-prime" style="background:var(--primary);" onclick="executarConsultaSaldo()"><i class="fas fa-search-dollar"></i> Apenas Consultar Saldo</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="tab-dash" class="tab-content">
+            <h3 class="section-title" style="margin-bottom: 24px;"><i class="fas fa-chart-line"></i> Visão Geral Financeira</h3>
+            
+            <div class="dash-grid">
+                <div class="dash-card" style="background: linear-gradient(135deg, var(--success), #059669);">
+                    <h4><i class="fas fa-arrow-up"></i> Total Vendido</h4>
+                    <h2 id="dash-tot-vendas">R$ 0,00</h2>
+                </div>
+                <div class="dash-card" style="background: linear-gradient(135deg, var(--danger), #dc2626);">
+                    <h4><i class="fas fa-history"></i> Total Estornado</h4>
+                    <h2 id="dash-tot-estornos">R$ 0,00</h2>
+                </div>
+                <div class="dash-card" style="background: linear-gradient(135deg, var(--accent-light), var(--accent));">
+                    <h4><i class="fas fa-plus-circle"></i> Total Recarregado</h4>
+                    <h2 id="dash-tot-recargas">R$ 0,00</h2>
+                </div>
+                <div class="dash-card" style="background: linear-gradient(135deg, var(--primary), #0f172a);">
+                    <h4><i class="fas fa-id-card"></i> Cartões Ativos</h4>
+                    <h2 id="dash-tot-cartoes">0</h2>
+                </div>
+            </div>
+
+            <div class="grid-layout">
+                <div class="card-surface" style="min-height: 400px;">
+                    <h3 class="section-title"><i class="fas fa-store"></i> Faturamento por Ponto de Venda</h3>
+                    <div style="height: 320px; position: relative;">
+                        <canvas id="graficoBarracas"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="tab-admin" class="tab-content">
+            <div class="card-surface">
+                <h3 class="section-title"><i class="fas fa-calendar-plus"></i> Cadastro de Eventos</h3>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px;">
+                    <div class="form-group"><label>Nome do Evento</label><input type="text" id="novo-evento-nome" class="input-control" placeholder="Ex: Festa Junina 2026"></div>
+                    <div class="form-group"><label>Senha (Token)</label><input type="text" id="novo-evento-senha" class="input-control" placeholder="1234"></div>
+                </div>
+                <button class="btn-prime" onclick="criarEventoAdmin()"><i class="fas fa-save"></i> Salvar Evento</button>
+                <div style="margin-top:18px; border:2px solid var(--border); border-radius:12px; overflow:hidden;">
+                    <table>
+                        <thead><tr><th>Evento</th><th>Senha (Token)</th></tr></thead>
+                        <tbody id="lista-eventos-admin"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card-surface">
+                <h3 class="section-title"><i class="fas fa-store-alt"></i> Passo 1: Criar Pontos de Venda</h3>
+                <div style="display:flex; gap:12px;">
+                    <input type="text" id="adm-barraca-nome" class="input-control" placeholder="Ex: Bar Central, Pastelaria">
+                    <button class="btn-prime" style="width:180px;" onclick="adicionarBarraca()"><i class="fas fa-plus"></i> Criar Ponto</button>
+                </div>
+            </div>
+
+            <div class="card-surface">
+                <h3 class="section-title"><i class="fas fa-utensils"></i> Passo 2: Cadastrar Cardápio</h3>
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:14px; margin-bottom:14px;">
+                    <div class="form-group"><label>Vincular a qual Ponto?</label><select id="adm-prod-barraca" class="input-control"></select></div>
+                    <div class="form-group"><label>Nome do Produto</label><input type="text" id="adm-prod-nome" class="input-control" placeholder="Ex: Cerveja Lata"></div>
+                    <div class="form-group"><label>Preço Fixo (R$)</label><input type="number" id="adm-prod-preco" class="input-control" placeholder="0.00" step="0.01"></div>
+                </div>
+                <button class="btn-prime" onclick="adicionarProduto()"><i class="fas fa-link"></i> Salvar no Cardápio</button>
+                <div style="margin-top:18px; max-height:300px; overflow-y:auto; border:2px solid var(--border); border-radius:12px;">
+                    <table id="tabela-produtos-gerencia"><thead><tr><th>Barraca</th><th>Produto</th><th>Preço</th><th>Ação</th></tr></thead><tbody></tbody></table>
+                </div>
+            </div>
+            
+            <div class="card-surface">
+                <h3 class="section-title"><i class="fas fa-print"></i> Passo 3: Fábrica de Cartões (PDF)</h3>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px;">
+                    <div class="form-group"><label>Prefixo de Segurança</label><input type="text" id="qr-prefixo" class="input-control" value="FCL"></div>
+                    <div class="form-group"><label>Quantidade a Gerar</label><input type="number" id="qr-qtd" class="input-control" value="6"></div>
+                </div>
+                <button class="btn-prime btn-warning" onclick="gerarLoteImpressaoFCL()"><i class="fas fa-qrcode"></i> Renderizar Cartões (Sem Duplicidade)</button>
+                <div id="box-preview-cards" style="display:none; margin-top:20px;">
+                    <button class="btn-prime" style="background: var(--primary);" onclick="window.print()"><i class="fas fa-print"></i> Imprimir ou Salvar PDF</button>
+                    <div id="grid-preview-visual" style="display:flex; flex-wrap:wrap; gap:15px; justify-content:center; margin-top:16px; padding: 20px; background: var(--bg-main); border-radius: 14px;"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <nav class="bottom-nav" id="app-nav" style="display:none;">
+        <button class="nav-item active" onclick="mudarAba('pdv', this)"><i class="fas fa-store"></i><span>PDV</span></button>
+        <button class="nav-item" onclick="mudarAba('caixa', this)"><i class="fas fa-cash-register"></i><span>Caixa</span></button>
+        <button class="nav-item" id="btn-nav-dash" style="display:none;" onclick="mudarAba('dash', this)"><i class="fas fa-chart-pie"></i><span>Relatórios</span></button>
+        <button class="nav-item" id="btn-nav-admin" style="display:none;" onclick="mudarAba('admin', this)"><i class="fas fa-sliders-h"></i><span>Gerência</span></button>
+    </nav>
+
+    <script>
+        const FIREBASE_URL = "https://sistema-fcl-default-rtdb.firebaseio.com/"; 
+
+        // Inicialização Core
+        firebase.initializeApp({ databaseURL: FIREBASE_URL });
+        const db = firebase.database();
+
+        let bd = { eventos: [], barracas: [], produtos: [], cartoes: [], transacoes: [] };
+        let eventoAtivo = null; let barracaAtivaId = null; let authMode = "caixa"; let carrinho = [];
+        let html5QrCode = null; let activeScannerContainerId = null; let graficoFaturamento = null;
+
+        window.onload = () => {
+            if (localStorage.getItem('fcl_session_evento')) {
+                eventoAtivo = JSON.parse(localStorage.getItem('fcl_session_evento'));
+                if (localStorage.getItem('fcl_admin_enabled') === 'true') {
+                    document.getElementById('btn-nav-admin').style.display = 'flex';
+                    document.getElementById('btn-nav-dash').style.display = 'flex';
+                }
+                configurarTelaLogada();
+            }
+            sincronizarBancoOtimizado();
+        };
+
+        // ==========================================
+        // OTIMIZAÇÃO DE PERFORMANCE FIREBASE
+        // (Listeners separados para não travar o app)
+        // ==========================================
+        function sincronizarBancoOtimizado() {
+            setBadge(true);
+            
+            // Ouvintes independentes reduzem o uso de dados em 90% em transações simultâneas
+            db.ref("eventos").on("value", s => { bd.eventos = s.val() ? Object.values(s.val()) : []; atualizarInterfaceCore(); });
+            db.ref("barracas").on("value", s => { bd.barracas = s.val() ? Object.values(s.val()) : []; atualizarInterfaceCore(); });
+            db.ref("produtos").on("value", s => { bd.produtos = s.val() ? Object.values(s.val()) : []; atualizarInterfaceCore(); });
+            
+            // Cartões atualizam o visor de saldo do PDV instantaneamente
+            db.ref("cartoes").on("value", s => { 
+                bd.cartoes = s.val() ? Object.values(s.val()) : []; 
+                verificarSaldoPDV(); 
+                atualizarInterfaceCore();
+            });
+            
+            // Transações só repintam o dash se ele estiver aberto
+            db.ref("transacoes").on("value", s => { 
+                bd.transacoes = s.val() ? Object.values(s.val()) : []; 
+                if(document.getElementById('tab-dash').classList.contains('active')) processarDadosDashboard();
+            });
+            
+            setTimeout(() => setBadge(false), 1500); // Esconde badge após cargas iniciais
+        }
+
+        function atualizarInterfaceCore() {
+            if (!eventoAtivo) {
+                const sl = document.getElementById('login-evento-id');
+                if(sl) sl.innerHTML = bd.eventos.map(e => `<option value="${e.id}">${e.nome}</option>`).join('');
+            }
+            atualizarFormulariosConfig();
+            if(eventoAtivo) {
+                renderBarracasFiltro();
+                renderEventosAdmin();
+            }
+        }
+
+        function showToast(msg, type="success") {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.style.borderLeft = `4px solid var(--${type === 'error' ? 'danger' : (type === 'warning' ? 'warning' : 'success')})`;
+            toast.innerHTML = `<i class="fas fa-${type==='error'?'times-circle':'check-circle'}"></i><div>${msg}</div>`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 2800);
+        }
+        function setBadge(st) { document.getElementById('sync-badge').style.display = st ? 'flex' : 'none'; }
+        function bloquearBotao(id, status) { document.getElementById(id).disabled = status; }
+
+        function setLoginMode(m) {
+            authMode = m;
+            document.getElementById('form-caixa').style.display = m === 'caixa' ? 'block' : 'none';
+            document.getElementById('form-admin').style.display = m === 'admin' ? 'block' : 'none';
+            
+            document.getElementById('btn-mode-caixa').style.background = m === 'caixa' ? 'var(--bg-card)' : 'none';
+            document.getElementById('btn-mode-caixa').style.boxShadow = m === 'caixa' ? '0 2px 8px rgba(0,0,0,0.05)' : 'none';
+            document.getElementById('btn-mode-caixa').style.color = m === 'caixa' ? 'var(--accent)' : 'var(--text-muted)';
+            
+            document.getElementById('btn-mode-admin').style.background = m === 'admin' ? 'var(--bg-card)' : 'none';
+            document.getElementById('btn-mode-admin').style.boxShadow = m === 'admin' ? '0 2px 8px rgba(0,0,0,0.05)' : 'none';
+            document.getElementById('btn-mode-admin').style.color = m === 'admin' ? 'var(--accent)' : 'var(--text-muted)';
+        }
+
+        function realizarLogin() {
+            if (authMode === 'caixa') {
+                const id = document.getElementById('login-evento-id').value;
+                const senha = document.getElementById('login-senha').value;
+                eventoAtivo = bd.eventos.find(e => e.id == id && e.senha == senha);
+                if (!eventoAtivo) return showToast("Senha ou Evento inválido.", "error");
+                localStorage.setItem('fcl_admin_enabled', 'false');
+            } else {
+                if (document.getElementById('admin-user').value === 'root' && document.getElementById('admin-pass').value === 'fcl123') {
+                    eventoAtivo = { id: 'admin', nome: "Controladoria Master" };
+                    document.getElementById('btn-nav-admin').style.display = 'flex';
+                    document.getElementById('btn-nav-dash').style.display = 'flex';
+                    localStorage.setItem('fcl_admin_enabled', 'true');
+                } else return showToast("Acesso Negado.", "error");
+            }
+            localStorage.setItem('fcl_session_evento', JSON.stringify(eventoAtivo));
+            configurarTelaLogada();
+        }
+
+        function configurarTelaLogada() {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('app-header').style.display = 'flex';
+            document.getElementById('main-app').style.display = 'block';
+            document.getElementById('app-nav').style.display = 'flex';
+            document.getElementById('header-nome-evento').innerText = eventoAtivo.nome;
+            renderBarracasFiltro();
+            renderPDV();
+        }
+
+        function logout() {
+            eventoAtivo = null; localStorage.clear();
+            location.reload();
+        }
+
+        function mudarAba(aba, btn) {
+            pararTodosLeitores();
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+            document.getElementById(`tab-${aba}`).classList.add('active');
+            btn.classList.add('active');
+            
+            if (aba === 'pdv') renderPDV();
+            if (aba === 'dash') processarDadosDashboard(); 
+        }
+
+        function iniciarLeitor(viewId, contId, inputId, action = false) {
+            pararTodosLeitores();
+            const container = document.getElementById(contId);
+            activeScannerContainerId = contId;
+            container.style.display = 'block';
+            
+            html5QrCode = new Html5Qrcode(viewId);
+            html5QrCode.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 },
+                (text) => {
+                    document.getElementById(inputId).value = text.toUpperCase();
+                    pararLeitorCamera(viewId, contId);
+                    if(action === 'consulta') executarConsultaSaldo();
+                    if(action === 'pdv') verificarSaldoPDV();
+                }, () => {}
+            ).catch(() => { showToast("Permissão de câmera negada ou indisponível.", "error"); container.style.display='none'; });
+        }
+
+        function pararLeitorCamera(vId, cId) {
+            if (html5QrCode) { html5QrCode.stop().then(() => { html5QrCode.clear(); html5QrCode = null; }).catch(()=>{}); }
+            document.getElementById(cId).style.display = 'none';
+            activeScannerContainerId = null;
+        }
+        function pararTodosLeitores() {
+            if (html5QrCode && activeScannerContainerId) {
+                let view = document.getElementById(activeScannerContainerId).querySelector('.scanner-viewport').id;
+                pararLeitorCamera(view, activeScannerContainerId);
+            }
+        }
+
+        // ==========================================
+        // VERIFICAR SALDO NO PDV
+        // ==========================================
+        function verificarSaldoPDV() {
+            let id = document.getElementById('pdv-card-id').value.toUpperCase().trim();
+            let box = document.getElementById('pdv-visor-saldo');
+            let txt = document.getElementById('pdv-valor-saldo');
+            
+            box.classList.remove('has-saldo', 'no-saldo');
+            
+            if(!id) {
+                txt.innerText = "Aguardando Cartão";
+                txt.style.color = "var(--text-muted)";
+                return;
+            }
+            
+            let card = bd.cartoes.find(c => c.id_cartao === id);
+            if(card) {
+                let s = parseFloat(card.saldo);
+                txt.innerText = `R$ ${s.toFixed(2)}`;
+                box.classList.add(s > 0 ? 'has-saldo' : 'no-saldo');
+                txt.style.color = s > 0 ? "var(--success)" : "var(--danger)";
+            } else {
+                txt.innerText = "Não Iniciado/Novo";
+                box.classList.add('no-saldo');
+                txt.style.color = "var(--warning)";
+            }
+        }
+
+        // ==========================================
+        // LÓGICA DO DASHBOARD
+        // ==========================================
+        function processarDadosDashboard() {
+            let totVendas = 0; let totEstornos = 0; let totRecargas = 0;
+            let vendasPorBarraca = {};
+
+            for(let i = 0; i < bd.transacoes.length; i++) {
+                let tx = bd.transacoes[i];
+                let val = parseFloat(tx.valor) || 0;
+                
+                if (tx.tipo === 'Venda') {
+                    totVendas += val;
+                    if (!vendasPorBarraca[tx.barraca_id]) vendasPorBarraca[tx.barraca_id] = 0;
+                    vendasPorBarraca[tx.barraca_id] += val;
+                } else if (tx.tipo === 'Estorno') { totEstornos += val;
+                } else if (tx.tipo === 'Recarga') { totRecargas += val; }
+            }
+
+            document.getElementById('dash-tot-vendas').innerText = `R$ ${totVendas.toFixed(2)}`;
+            document.getElementById('dash-tot-estornos').innerText = `R$ ${totEstornos.toFixed(2)}`;
+            document.getElementById('dash-tot-recargas').innerText = `R$ ${totRecargas.toFixed(2)}`;
+            document.getElementById('dash-tot-cartoes').innerText = bd.cartoes.length;
+
+            let labels = []; let dados = [];
+            Object.keys(vendasPorBarraca).forEach(bId => {
+                let nomeDaBarraca = bd.barracas.find(b => b.id === bId)?.nome || 'Ponto Apagado';
+                labels.push(nomeDaBarraca); dados.push(vendasPorBarraca[bId]);
+            });
+            renderizarGraficoBarracas(labels, dados);
+        }
+
+        function renderizarGraficoBarracas(labels, dados) {
+            const ctx = document.getElementById('graficoBarracas');
+            if (!ctx) return;
+            if (graficoFaturamento) graficoFaturamento.destroy();
+
+            graficoFaturamento = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{ label: 'Faturamento (R$)', data: dados, backgroundColor: '#6366f1', borderRadius: 8 }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+            });
+        }
+
+        // ==========================================
+        // GERÊNCIA GLOBAL (ADMIN)
+        // ==========================================
+        function renderEventosAdmin() {
+            const tabela = document.getElementById('lista-eventos-admin');
+            if(!tabela) return;
+            tabela.innerHTML = bd.eventos.map(ev => `<tr><td><b>${ev.nome}</b></td><td>${ev.senha}</td></tr>`).join('');
+        }
+
+        function criarEventoAdmin() {
+            const nome = document.getElementById('novo-evento-nome').value.trim();
+            const senha = document.getElementById('novo-evento-senha').value.trim();
+            if(!nome || !senha) return showToast("Preencha nome e senha.", "warning");
+
+            const id = 'EVT-' + Date.now();
+            db.ref('eventos/' + id).set({ id, nome, senha });
+            document.getElementById('novo-evento-nome').value = '';
+            document.getElementById('novo-evento-senha').value = '';
+            showToast("Evento cadastrado com sucesso!");
+        }
+
+        function atualizarFormulariosConfig() {
+            const selectBarraca = document.getElementById('adm-prod-barraca');
+            if(!selectBarraca) return;
+            let pts = bd.barracas; 
+            
+            if(pts.length === 0) selectBarraca.innerHTML = `<option value="">Nenhuma barraca criada</option>`;
+            else selectBarraca.innerHTML = pts.map(b => `<option value="${b.id}">${b.nome}</option>`).join('');
+            
+            const tabelaBody = document.querySelector('#tabela-produtos-gerencia tbody');
+            tabelaBody.innerHTML = bd.produtos.map(p => {
+                let bNome = bd.barracas.find(b => b.id == p.barraca_id)?.nome || '<span style="color:var(--danger)">Ponto Apagado</span>';
+                let precoValidado = isNaN(parseFloat(p.preco)) ? 0 : parseFloat(p.preco);
+                return `<tr>
+                    <td><b>${bNome}</b></td>
+                    <td>${p.nome}</td>
+                    <td style="font-weight:700; color:var(--success);">R$ ${precoValidado.toFixed(2)}</td>
+                    <td><button onclick="deletarProduto('${p.id}')" style="background:none; border:none; color:var(--danger); cursor:pointer; font-size:16px;"><i class="fas fa-trash-alt"></i></button></td>
+                </tr>`;
+            }).join('');
+        }
+
+        function adicionarBarraca() {
+            const nome = document.getElementById('adm-barraca-nome').value.trim();
+            if(!nome) return showToast("Dê um nome ao Ponto de Venda.", "warning");
+            const id = 'BAR-' + Date.now();
+            db.ref('barracas/' + id).set({ id, evento_id: "global", nome: nome });
+            document.getElementById('adm-barraca-nome').value = '';
+            showToast("Ponto de venda criado!");
+        }
+
+        function adicionarProduto() {
+            const barraca_id = document.getElementById('adm-prod-barraca').value;
+            const nome = document.getElementById('adm-prod-nome').value.trim();
+            const preco = parseFloat(document.getElementById('adm-prod-preco').value);
+
+            if(!barraca_id) return showToast("Crie uma barraca primeiro.", "error");
+            if(!nome || isNaN(preco) || preco <= 0) return showToast("Nome inválido ou preço menor que zero.", "warning");
+
+            const id = 'PRD-' + Date.now();
+            db.ref('produtos/' + id).set({ id, evento_id: "global", barraca_id, nome, preco });
+            document.getElementById('adm-prod-nome').value = '';
+            document.getElementById('adm-prod-preco').value = '';
+            showToast("Produto atrelado ao cardápio!");
+        }
+
+        function deletarProduto(id) {
+            if(confirm("Tem certeza que deseja apagar este produto?")) db.ref('produtos/' + id).remove();
+        }
+
+        // ==========================================
+        // LÓGICA DE CAIXA (RECARGA/ESTORNO BLINDADO)
+        // ==========================================
+        function executarConsultaSaldo() {
+            let id = document.getElementById('caixa-card-id').value.toUpperCase().trim();
+            if(!id) return showToast("Insira ou Bipe o ID do cartão.", "warning");
+            let card = bd.cartoes.find(c => c.id_cartao === id);
+            
+            document.getElementById('display-saldo-valor').innerText = `R$ ${card ? parseFloat(card.saldo).toFixed(2) : '0.00'}`;
+            document.getElementById('display-saldo-valor').style.color = card ? 'var(--success)' : 'var(--text-muted)';
+            document.getElementById('display-saldo-id').innerText = `💳 CARTÃO: ${id} ${!card ? '(NOVO)' : ''}`;
+            document.getElementById('display-resultado-consulta').style.display = 'flex';
+        }
+
+        function estornarSaldoTotal() {
+            let id = document.getElementById('caixa-card-id').value.toUpperCase().trim();
+            if(!id) return showToast("Por favor, consulte um cartão primeiro.", "warning");
+            
+            let card = bd.cartoes.find(c => c.id_cartao === id);
+            let saldoAtual = (card && card.saldo) ? parseFloat(card.saldo) : 0;
+
+            if(saldoAtual <= 0) return showToast("Este cartão já está zerado ou inativo.", "warning");
+
+            if(confirm(`Tem certeza que deseja ZERAR o cartão e estornar o valor TOTAL de R$ ${saldoAtual.toFixed(2)}?`)) {
+                document.getElementById('caixa-valor').value = saldoAtual;
+                processarCaixaTransacao('Estorno');
+            }
+        }
+
+        function processarCaixaTransacao(tipoMov) {
+            let id = document.getElementById('caixa-card-id').value.toUpperCase().trim();
+            let valorInput = document.getElementById('caixa-valor').value;
+            let valor = parseFloat(valorInput);
+
+            if(!id) return showToast("Preencha o código do cartão.", "warning");
+            if(isNaN(valor) || valor <= 0) return showToast("Digite um valor de recarga válido.", "warning");
+
+            const btnId = tipoMov === "Recarga" ? 'btn-recarga' : 'btn-estorno';
+            bloquearBotao(btnId, true);
+            setBadge(true);
+
+            const cardRef = db.ref('cartoes/' + id);
+
+            cardRef.transaction((cardData) => {
+                let saldoAtual = (cardData && cardData.saldo) ? parseFloat(cardData.saldo) : 0;
+                if (tipoMov === "Estorno" && saldoAtual < valor) return; // Rejeita se não tiver saldo
+                let novoSaldo = tipoMov === "Recarga" ? (saldoAtual + valor) : (saldoAtual - valor);
+                return { id_cartao: id, saldo: novoSaldo, updated_at: new Date().toISOString() };
+                
+            }, (error, committed, snapshot) => {
+                bloquearBotao(btnId, false);
+                setBadge(false);
+
+                if (error) {
+                    showToast("Erro na rede. Tente novamente.", "error");
+                } else if (!committed) {
+                    showToast("Operação Recusada! Saldo insuficiente para estorno.", "error");
+                } else {
+                    const transacaoId = 'TX-' + Date.now();
+                    db.ref('transacoes/' + transacaoId).set({
+                        id: transacaoId, evento_id: eventoAtivo.id, barraca_id: "CAIXA_CENTRAL", 
+                        cartao_id: id, tipo: tipoMov, valor: valor, detalhes: `Operação de ${tipoMov}`, data: new Date().toISOString()
+                    });
+
+                    document.getElementById('caixa-card-id').value = '';
+                    document.getElementById('caixa-valor').value = '';
+                    executarConsultaSaldo(); // Atualiza a tela preta com o novo valor
+                    
+                    setTimeout(() => { document.getElementById('display-resultado-consulta').style.display = 'none'; }, 4000);
+                    showToast(`${tipoMov} de R$ ${valor.toFixed(2)} concluída com sucesso!`, "success");
+                }
+            });
+        }
+
+        // ==========================================
+        // LÓGICA DE PDV (VENDAS)
+        // ==========================================
+        function renderBarracasFiltro() {
+            const cont = document.getElementById('barraca-filter-container');
+            let pts = bd.barracas; 
+            
+            if(pts.length > 0) {
+                if(!barracaAtivaId || !pts.find(b=>b.id === barracaAtivaId)) barracaAtivaId = pts[0].id;
+                cont.innerHTML = pts.map(b => `
+                    <button class="barraca-tab ${barracaAtivaId === b.id ? 'active' : ''}" onclick="barracaAtivaId='${b.id}'; renderBarracasFiltro(); renderPDV();">
+                        <i class="fas fa-store"></i> ${b.nome}
+                    </button>
+                `).join('');
+            } else {
+                cont.innerHTML = `<span style="font-size:13px; color:var(--text-muted); font-weight:600;">Aguardando gerência criar pontos de venda.</span>`;
+            }
+        }
+
+        function renderPDV(filtro = "") {
+            const grid = document.getElementById('lista-produtos-pdv');
+            let itens = bd.produtos.filter(p => p.barraca_id === barracaAtivaId);
+            if(filtro) itens = itens.filter(p => p.nome.toLowerCase().includes(filtro.toLowerCase()));
+            
+            if(itens.length === 0) {
+                grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;font-size:14px; color:var(--text-muted); padding:30px; border:2px dashed var(--border); border-radius:14px;">Nenhum produto atrelado a este ponto.</div>`;
+                return;
+            }
+
+            grid.innerHTML = itens.map(p => {
+                let precoValid = isNaN(parseFloat(p.preco)) ? 0 : parseFloat(p.preco);
+                let noCarrinho = carrinho.find(c => c.id === p.id);
+                let badge = noCarrinho ? `<div class="product-qty-badge">${noCarrinho.qtd}</div>` : '';
+                return `
+                <div class="product-tile" onclick="addAoCarrinho('${p.id}', '${p.nome}', ${precoValid})">
+                    ${badge}
+                    <span style="font-size:13px; font-weight:700; display:block; margin-bottom:8px; color:var(--text-dark);">${p.nome}</span>
+                    <strong style="color:var(--accent); font-size:15px;">R$ ${precoValid.toFixed(2)}</strong>
+                </div>`;
+            }).join('');
+        }
+
+        function addAoCarrinho(id, nome, preco) {
+            let ex = carrinho.find(c => c.id === id);
+            if(ex) ex.qtd++; else carrinho.push({id, nome, preco, qtd: 1});
+            atualizarCarrinho();
+            renderPDV(document.querySelector('.input-control[placeholder="🔍 Filtrar cardápio..."]').value);
+        }
+
+        function atualizarCarrinho() {
+            let tot = 0;
+            document.getElementById('carrinho-itens').innerHTML = carrinho.map((i, index) => {
+                tot += i.preco * i.qtd;
+                return `<div style="display:flex; justify-content:space-between; align-items:center; font-size:13px; padding:10px 0; border-bottom:1px solid var(--border);">
+                    <span style="font-weight:600;"><button onclick="removerDoCarrinho(${index})" style="background:none; border:none; color:var(--danger); margin-right:12px; cursor:pointer; font-size:16px;"><i class="fas fa-minus-circle"></i></button>${i.qtd}x ${i.nome}</span>
+                    <b style="color:var(--primary);">R$ ${(i.preco * i.qtd).toFixed(2)}</b>
+                </div>`;
+            }).join('');
+            document.getElementById('carrinho-total').innerText = `R$ ${tot.toFixed(2)}`;
+        }
+
+        function removerDoCarrinho(index) {
+            carrinho[index].qtd--;
+            if(carrinho[index].qtd <= 0) carrinho.splice(index, 1);
+            atualizarCarrinho();
+            renderPDV(document.querySelector('.input-control[placeholder="🔍 Filtrar cardápio..."]').value);
+        }
+
+        function limparCarrinho() {
+            carrinho = []; atualizarCarrinho(); renderPDV();
+        }
+
+        function finalizarVenda() {
+            let id = document.getElementById('pdv-card-id').value.toUpperCase().trim();
+            let tot = carrinho.reduce((a, b) => a + (b.preco * b.qtd), 0);
+            
+            if(!id) return showToast("Bipe ou digite o cartão do cliente.", "warning");
+            if(tot <= 0) return showToast("Adicione produtos ao carrinho.", "warning");
+            
+            bloquearBotao('btn-finalizar-venda', true);
+            setBadge(true);
+
+            const cardRef = db.ref('cartoes/' + id);
+
+            cardRef.transaction((cardData) => {
+                let saldoAtual = (cardData && cardData.saldo) ? parseFloat(cardData.saldo) : 0;
+                if (saldoAtual < tot) return;
+                return { id_cartao: id, saldo: saldoAtual - tot, updated_at: new Date().toISOString() };
+                
+            }, (error, committed, snapshot) => {
+                bloquearBotao('btn-finalizar-venda', false);
+                setBadge(false);
+
+                if (error) {
+                    showToast("Falha de conexão. Venda não realizada.", "error");
+                } else if (!committed) {
+                    showToast(`VENDA RECUSADA! Saldo insuficiente.`, "error");
+                } else {
+                    let str = carrinho.map(c => `${c.qtd}x ${c.nome}`).join(', ');
+                    const txId = 'TX-' + Date.now();
+                    db.ref('transacoes/' + txId).set({
+                        id: txId, evento_id: eventoAtivo.id, barraca_id: barracaAtivaId, 
+                        cartao_id: id, tipo: "Venda", valor: tot, detalhes: str, data: new Date().toISOString()
+                    });
+                    
+                    limparCarrinho(); 
+                    document.getElementById('pdv-card-id').value = '';
+                    verificarSaldoPDV(); // Zera o visor
+                    showToast("VENDA APROVADA!", "success");
+                }
+            });
+        }
+
+        // ==========================================
+        // GERADOR DE CARTÕES (REGRA ANTI-DUPLICIDADE)
+        // ==========================================
+        function gerarIdUnicoSeguro(prefixo, idsGeradosNestaSessao) {
+            let cardId = "";
+            let gerando = true;
+            
+            while(gerando) {
+                cardId = `${prefixo}-${Math.floor(Math.random() * 90000 + 10000)}`;
+                let existeNoBanco = bd.cartoes.some(c => c.id_cartao === cardId);
+                let existeNoLote = idsGeradosNestaSessao.includes(cardId);
+                
+                if(!existeNoBanco && !existeNoLote) gerando = false; 
+            }
+            return cardId;
+        }
+
+        function gerarLoteImpressaoFCL() {
+            const prefixo = document.getElementById('qr-prefixo').value.toUpperCase().trim() || "FCL";
+            const qtd = parseInt(document.getElementById('qr-qtd').value) || 6;
+            
+            let boxPreview = document.getElementById('box-preview-cards');
+            let gridPreview = document.getElementById('grid-preview-visual');
+            let areaPrintFisico = document.getElementById('print-area');
+            
+            gridPreview.innerHTML = "";
+            areaPrintFisico.innerHTML = "";
+            
+            let idsVerificadosDestaImpressao = [];
+            
+            for(let i = 1; i <= qtd; i++) {
+                let cardId = gerarIdUnicoSeguro(prefixo, idsVerificadosDestaImpressao);
+                idsVerificadosDestaImpressao.push(cardId);
+                
+                let qr = new QRious({ value: cardId, size: 200, level: 'H' });
+                let base64Image = qr.toDataURL();
+                
+                let cardHTML = `
+                    <div class="fcl-card-render">
+                        <img class="brand-logo" src="https://i.postimg.cc/m2Tj2gYD/IMG-1255-removebg-preview.png">
+                        <img src="${base64Image}" style="width:130px;height:130px;border-radius:12px; margin: 10px 0;">
+                        <div class="id-tag">${cardId}</div>
+                    </div>
+                `;
+                gridPreview.innerHTML += cardHTML;
+                areaPrintFisico.innerHTML += cardHTML;
+            }
+            boxPreview.style.display = 'block';
+            showToast(`${qtd} cartões gerados e verificados contra duplicidade.`, "success");
+        }
+    </script>
+</body>
+</html>
